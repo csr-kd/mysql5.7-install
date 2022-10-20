@@ -1,0 +1,162 @@
+1、查看系统版本
+cat /etc/redhat-release
+
+## 安装依赖包
+yum install perl-Data-Dumper
+
+## 修改系统参数
+
+vi /etc/security/limits.conf
+* soft nofile 65535
+* hard nofile 65535
+
+2、下载MySQL5.7二进制包
+https://dev.mysql.com/downloads/mysql/
+Linux-General (mysql-5.7.32-linux-glibc2.12-x86_64.tar.gz)
+
+
+3、添加用户
+
+# useradd mysql
+
+
+4、安装mysql到/mysql下
+
+# cd /mysql
+# tar zxvf /software/mysql-5.7.32-linux-glibc2.12-x86_64.tar.gz
+
+
+5、修改解压后文件夹名为 mysql
+
+# mv mysql-5.7.32-linux-glibc2.12-x86_64/* /mysql
+
+
+6、修改mysql的各级文件夹和文件的创建者、创建组为mysql（注意语句后面有个.）
+
+mkdir -p /mysql/{data,log,binlogs}
+touch /mysql/log/mysqld_error.log
+
+chown -R mysql:mysql /mysql
+
+
+7、至此mysql已经安装完了，但还需要初始化，初始化mysql表、test表、infomation表等。 
+
+
+## 【mysql 8.0】之后的版本需要在初始化的时候加上【lower_case_table_names】参数才能不区分大小写
+
+【初始化脚本】
+cd /mysql/bin
+./mysqld --defaults-file=/etc/my.cnf --initialize --basedir=/mysql --datadir=/mysql/data --innodb_undo_tablespaces=3 --lower_case_table_names=1 --explicit_defaults_for_timestamp
+
+## 安装SSL加密连接
+./mysql_ssl_rsa_setup --basedir=/mysql --datadir=/mysql/data 
+
+
+## 记住root用户的初始化密码
+
+
+
+# cp /mysql/support-files/mysql.server /etc/init.d/mysqld
+
+--修改脚本的数据目录
+# vi /etc/init.d/mysqld
+--user=mysql
+--basedir=/mysql
+--datadir=/mysql/data
+　　
+
+PS：该步骤有可能会报错误
+安装需要的包即可:libstdc++.so.6和libaio.so.1和libncurses.so.5
+
+
+8：修改配置文件
+
+cp /mysql/my.cnf /etc/my.cnf
+vi /etc/my.cnf
+添加：
+ 
+my.cnf for MySQL 5.7
+
+
+
+
+
+9：启动mySQL服务
+
+export PATH=/mysql/bin:$PATH
+
+ln -s /mysql/bin/* /usr/bin/
+
+mkdir -p /usr/local/mysql/bin
+ln -s /mysql/bin/mysqld /usr/local/mysql/bin/mysqld
+
+
+
+
+添加服务自启动
+chkconfig --add mysqld
+chkconfig mysqld on
+chkconfig --list mysqld
+
+service mysqld start
+
+
+
+10：登陆MySQL并且删除空用户
+
+
+## mysql5.7的初始化root密码在安装初始化的时候显示
+set password=PASSWORD('123456');
+
+alter user 'root'@'localhost' identified by '123456';
+
+use mysql;
+update user set password_expired='N' where user='root';
+
+
+mysql> SELECT user,host,password FROM mysql.user;
++------+-----------+----------+
+| user | host      | password |
++------+-----------+----------+
+| root | localhost |          |
+| root | 10-4-5-9  |          |
+| root | 127.0.0.1 |          |
+| root | ::1       |          |
+|      | localhost |          |
+|      | 10-4-5-9  |          |
++------+-----------+----------+
+6 rows in set (0.00 sec)
+ 
+ 
+UPDATE mysql.user set password = PASSWORD('123456') WHERE user = 'root';
+
+## mysql 5.7
+UPDATE mysql.user set authentication_string = PASSWORD('123456') WHERE user = 'root';
+
+ 
+# DROP USER ''@localhost;
+# drop database test;
+
+	FLUSH PRIVILEGES;
+
+查看字符集
+show variables like '%collation%';
+show variables like '%char%';
+
+
+查看sql mode
+show variables like 'sql_mode';
+
+
+
+
+
+## Mysql 5.7降低密码策略
+SHOW VARIABLES LIKE 'validate_password%';
+set global validate_password_policy=0;
+
+
+## MySQL 8.0开启root用户远程登录
+grant all on *.* to root@'%';
+
+ALTER USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY '123456';
